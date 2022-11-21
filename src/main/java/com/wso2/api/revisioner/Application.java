@@ -1,5 +1,6 @@
 package com.wso2.api.revisioner;
 
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
@@ -18,10 +19,6 @@ import org.apache.http.HttpHeaders;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-
 import org.json.JSONObject;
 import org.springframework.context.ConfigurableApplicationContext;
 
@@ -38,6 +35,9 @@ public class Application {
     private static String CLIENT_SECRET = "";
     private static String SANDBOX_ENDPOINT = "";
     private static String PRODUCTION_ENDPOINT = "";
+    private static String USERNAME = "";
+    private static String PASSWORD = "";
+    private static String API_LIMIT = "";
 
     private static String APPLICATION_HOST = "application.host";
     private static String APPLICATION_TRANSPORT_PORT = "application.transport.port";
@@ -45,6 +45,9 @@ public class Application {
     private static String APPLICATION_CLIENT_SECRET = "application.client.secret";
     private static String APPLICATION_SANDBOX_ENDPOINT = "application.sandbox.endpoint";
     private static String APPLICATION_PRODUCTION_ENDPOINT = "application.production.endpoint";
+    private static String APPLICATION_USERNAME = "application.username";
+    private static String APPLICATION_PASSWORD = "application.password";
+    private static String APPLICATION_API_LIMIT = "application.api.limit";
 
     private static String GATEWAY_NAME = "";
     private static String VHOST = "";
@@ -58,73 +61,122 @@ public class Application {
         CLIENT_SECRET = properties.getProperty(APPLICATION_CLIENT_SECRET, "");
         SANDBOX_ENDPOINT = properties.getProperty(APPLICATION_SANDBOX_ENDPOINT, "");
         PRODUCTION_ENDPOINT = properties.getProperty(APPLICATION_PRODUCTION_ENDPOINT, "");
+        USERNAME = properties.getProperty(APPLICATION_USERNAME, "");
+        PASSWORD = properties.getProperty(APPLICATION_PASSWORD, "");
+        API_LIMIT = properties.getProperty(APPLICATION_API_LIMIT, "");
     }
 
     public static void main(String[] args) {
         ConfigurableApplicationContext ctx = SpringApplication.run(Application.class, args);
-        System.out.println("HOST : " + HOST);
-        System.out.println("TRANSPORT_PORT : " + TRANSPORT_PORT);
-        System.out.println("CLIENT_KEY : " + CLIENT_KEY);
-        System.out.println("CLIENT_SECRET : " + CLIENT_SECRET);
-        System.out.println("SANDBOX_ENDPOINT : " + SANDBOX_ENDPOINT);
-        System.out.println("PRODUCTION_ENDPOINT : " + PRODUCTION_ENDPOINT);
+        FileWriter fw = null;
+        BufferedWriter bw = null;
+        PrintWriter pw = null;
+        try{
+            fw = FileUtils.getNewFileWriter();
+            bw = new BufferedWriter(fw);
+            pw = new PrintWriter(bw);
+            System.out.println("HOST : " + HOST);
+            System.out.println("TRANSPORT_PORT : " + TRANSPORT_PORT);
+            System.out.println("CLIENT_KEY : " + CLIENT_KEY);
+            System.out.println("CLIENT_SECRET : " + CLIENT_SECRET);
+            System.out.println("SANDBOX_ENDPOINT : " + SANDBOX_ENDPOINT);
+            System.out.println("PRODUCTION_ENDPOINT : " + PRODUCTION_ENDPOINT);
+            System.out.println("USERNAME : " + USERNAME);
+            System.out.println("PASSWORD : " + PASSWORD);
+            System.out.println("API_LIMIT : " + API_LIMIT);
 
-        if (!HOST.equals("") && !TRANSPORT_PORT.equals("") && !CLIENT_KEY.equals("") && !CLIENT_SECRET.equals("") && !SANDBOX_ENDPOINT.equals("") && !PRODUCTION_ENDPOINT.equals("")) {
-            String accessToken = generateAccessToken();
-            System.out.println("*************************************************************");
-            if (accessToken != null) {
-                List<String> apiIds = retrieveAllAPIIds(accessToken);
-                if (apiIds.size() != 0) {
-                    System.out.println("*************************************************************");
-                    System.out.println("Total Number of APIs to be changed : " + apiIds.size());
-                    System.out.println("*************************************************************");
-                    for (int i = 0; i < apiIds.size(); i++) {
-                        JSONObject apiDefinition = getAPIById(accessToken, apiIds.get(i));
+            pw.println("HOST : " + HOST);
+            pw.println("TRANSPORT_PORT : " + TRANSPORT_PORT);
+            pw.println("CLIENT_KEY : " + CLIENT_KEY);
+            pw.println("CLIENT_SECRET : " + CLIENT_SECRET);
+            pw.println("SANDBOX_ENDPOINT : " + SANDBOX_ENDPOINT);
+            pw.println("PRODUCTION_ENDPOINT : " + PRODUCTION_ENDPOINT);
+            pw.println("USERNAME : " + USERNAME);
+            pw.println("PASSWORD : " + PASSWORD);
+            pw.println("API_LIMIT : " + API_LIMIT);
+
+            if (!HOST.equals("") && !TRANSPORT_PORT.equals("") && !CLIENT_KEY.equals("") && !CLIENT_SECRET.equals("")
+                    && !SANDBOX_ENDPOINT.equals("") && !PRODUCTION_ENDPOINT.equals("") && !USERNAME.equals("")
+                    && !PASSWORD.equals("") && !API_LIMIT.equals("")) {
+                String accessToken = generateAccessToken(pw);
+                System.out.println("*************************************************************");
+                pw.println("*************************************************************");
+                if (accessToken != null) {
+                    List<String> apiIds = retrieveAllAPIIds(accessToken, pw);
+                    if (apiIds.size() != 0) {
+                        System.out.println("*************************************************************");
+                        pw.println("*************************************************************");
+                        System.out.println("Total Number of APIs to be changed : " + apiIds.size());
+                        pw.println("Total Number of APIs to be changed : " + apiIds.size());
+                        System.out.println("*************************************************************");
+                        pw.println("*************************************************************");
+                        for (int i = 0; i < apiIds.size(); i++) {
+                            JSONObject apiDefinition = getAPIById(accessToken, apiIds.get(i), pw);
 //
-                        apiDefinition = changeEPParameter(apiIds.get(i), apiDefinition);
+                            apiDefinition = changeEPParameter(apiIds.get(i), apiDefinition, pw);
 //
-                        if (updateApi(accessToken, apiIds.get(i), apiDefinition)) {
-                            System.out.println("Update API Operation Status : " + true);
-                            String inactiveRevision = getInactiveRevision(accessToken, apiIds.get(i));
+                            if (updateApi(accessToken, apiIds.get(i), apiDefinition, pw)) {
+                                System.out.println("Update API Operation Status : " + true);
+                                pw.println("Update API Operation Status : " + true);
+                                String inactiveRevision = getInactiveRevision(accessToken, apiIds.get(i), pw);
 //
-                            if (inactiveRevision != null) {
-                                if (deleteRevision(accessToken, apiIds.get(i), inactiveRevision)) {
-                                    System.out.println("Delete Revision Operation Status : " + true);
-                                    String revisionId = createRevision(accessToken, apiIds.get(i));
-                                    if (deployRevision(accessToken, apiIds.get(i), revisionId)) {
-                                        System.out.println("Deploying the Revision : " + revisionId + " is success.");
+                                if (inactiveRevision != null) {
+                                    if (deleteRevision(accessToken, apiIds.get(i), inactiveRevision, pw)) {
+                                        System.out.println("Delete Revision Operation Status : " + true);
+                                        pw.println("Delete Revision Operation Status : " + true);
+                                        String revisionId = createRevision(accessToken, apiIds.get(i), pw);
+                                        if (deployRevision(accessToken, apiIds.get(i), revisionId, pw)) {
+                                            System.out.println("Deploying the Revision : " + revisionId + " is success.");
+                                            pw.println("Deploying the Revision : " + revisionId + " is success.");
+                                        } else {
+                                            System.out.println("Deploying the Revision : " + revisionId + " was not success.");
+                                            pw.println("Deploying the Revision : " + revisionId + " was not success.");
+                                        }
                                     } else {
-                                        System.out.println("Deploying the Revision : " + revisionId + " was not success.");
+                                        System.out.println("Deleting the Revision : " + inactiveRevision + " was not success.");
+                                        pw.println("Deleting the Revision : " + inactiveRevision + " was not success.");
                                     }
                                 } else {
-                                    System.out.println("Deleting the Revision : " + inactiveRevision + " was not success.");
+                                    String revisionId = createRevision(accessToken, apiIds.get(i), pw);
+                                    if (deployRevision(accessToken, apiIds.get(i), revisionId, pw)) {
+                                        System.out.println("Deploying the Revision : " + revisionId + " is success.");
+                                        pw.println("Deploying the Revision : " + revisionId + " is success.");
+
+                                    } else {
+                                        System.out.println("Deploying the Revision : " + revisionId + " was not success.");
+                                        pw.println("Deploying the Revision : " + revisionId + " was not success.");
+                                    }
                                 }
                             } else {
-                                String revisionId = createRevision(accessToken, apiIds.get(i));
-                                if (deployRevision(accessToken, apiIds.get(i), revisionId)) {
-                                    System.out.println("Deploying the Revision : " + revisionId + " is success.");
-
-                                } else {
-                                    System.out.println("Deploying the Revision : " + revisionId + " was not success.");
-                                }
+                                System.out.println("Updating the API : " + apiIds.get(i) + " was not success.");
+                                pw.println("Updating the API : " + apiIds.get(i) + " was not success.");
                             }
-                        } else {
-                            System.out.println("Updating the API : " + apiIds.get(i) + " was not success.");
+                            System.out.println("*************************************************************");
+                            pw.println("*************************************************************");
                         }
-                        System.out.println("*************************************************************");
                     }
                 }
+            } else {
+                System.out.println("Parameters were not loaded correctly. Please check the integration.properties file.");
+                pw.println("Parameters were not loaded correctly. Please check the integration.properties file.");
             }
-        } else {
-            System.out.println("Parameters were not loaded correctly. Please check the integration.properties file.");
+            pw.flush();
+            ctx.close();
+        }finally {
+            try {
+                pw.close();
+                bw.close();
+                fw.close();
+            } catch (IOException io) {
+                // can't do anything
+            }
         }
-        ctx.close();
     }
 
-    private static String generateAccessToken() {
+    private static String generateAccessToken(PrintWriter pw) {
         final String REQUEST_BODY = "{\"grant_type\": \"password\",\n" +
-                "\"username\":\"admin\",\n" +
-                "\"password\":\"admin\",\n" +
+                "\"username\":\""+USERNAME+"\",\n" +
+                "\"password\":\""+PASSWORD+"\",\n" +
                 "\"scope\":\"apim:api_view apim:api_create apim:api_manage apim:api_delete apim:api_publish apim:subscription_view apim:subscription_block apim:subscription_manage apim:external_services_discover apim:threat_protection_policy_create apim:threat_protection_policy_manage apim:document_create apim:document_manage apim:mediation_policy_view apim:mediation_policy_create apim:mediation_policy_manage apim:client_certificates_view apim:client_certificates_add apim:client_certificates_update apim:ep_certificates_view apim:ep_certificates_add apim:ep_certificates_update apim:publisher_settings apim:pub_alert_manage apim:shared_scope_manage apim:app_import_export apim:api_import_export apim:api_product_import_export apim:api_generate_key apim:common_operation_policy_view apim:common_operation_policy_manage apim:comment_write apim:comment_view apim:admin\"\n" +
                 "}";
 
@@ -176,17 +228,20 @@ public class Application {
                     JSONObject object = new JSONObject(sb.toString());
                     String accessToken = (String) object.get("access_token");
                     System.out.println("ACCESS TOKEN : " + accessToken);
+                    pw.println("ACCESS TOKEN : " + accessToken);
                     return accessToken;
 
                 } catch (IOException e) {
                     System.out.println("An exception has been thrown when attempting to read the response for the token service : " + e);
+                    pw.println("An exception has been thrown when attempting to read the response for the token service : " + e);
                     return null;
                 } catch (JSONException e) {
                     e.printStackTrace();
                     return null;
                 }
             } else {
-                System.out.println("Returned Status Code : " + response.getStatusLine().getStatusCode());
+                System.out.println("Generate Token Returned Status Code : " + response.getStatusLine().getStatusCode());
+                pw.println("Generate Token Returned Status Code : " + response.getStatusLine().getStatusCode());
                 return null;
             }
 
@@ -200,8 +255,8 @@ public class Application {
         return null;
     }
 
-    private static List<String> retrieveAllAPIIds(String accessToken) {
-        HttpGet httpGet = new HttpGet("https://" + HOST + ":" + TRANSPORT_PORT + "/api/am/publisher/v3/apis");
+    private static List<String> retrieveAllAPIIds(String accessToken, PrintWriter pw) {
+        HttpGet httpGet = new HttpGet("https://" + HOST + ":" + TRANSPORT_PORT + "/api/am/publisher/v3/apis?limit="+API_LIMIT);
         try {
             httpGet.setHeader("Accept", "application/json");
 
@@ -254,6 +309,7 @@ public class Application {
                                 apiObjArr.add((String) tempObj.get("id"));
                             } else {
                                 System.out.println("Identified the API : " + tempObj.getString("id") + " is " + lifeCycleStatus);
+                                pw.println("Identified the API : " + tempObj.getString("id") + " is " + lifeCycleStatus);
                             }
                         }
                     }
@@ -262,13 +318,15 @@ public class Application {
 
                 } catch (IOException e) {
                     System.out.println("An exception has been thrown when attempting to read the response for the publisher get all api service : " + e);
+                    pw.println("An exception has been thrown when attempting to read the response for the publisher get all api service : " + e);
                     return null;
                 } catch (JSONException e) {
                     e.printStackTrace();
                     return null;
                 }
             } else {
-                System.out.println("Returned Status Code : " + response.getStatusLine().getStatusCode());
+                System.out.println("Retrieve All APIs Returned Status Code : " + response.getStatusLine().getStatusCode());
+                pw.println("Retrieve All APIs Returned Status Code : " + response.getStatusLine().getStatusCode());
                 return null;
             }
 
@@ -282,7 +340,7 @@ public class Application {
         return null;
     }
 
-    private static JSONObject getAPIById(String accessToken, String apiId) {
+    private static JSONObject getAPIById(String accessToken, String apiId, PrintWriter pw) {
         HttpGet httpGet = new HttpGet("https://" + HOST + ":" + TRANSPORT_PORT + "/api/am/publisher/v3/apis/" + apiId);
         try {
             httpGet.setHeader("Accept", "application/json");
@@ -327,13 +385,15 @@ public class Application {
 
                 } catch (IOException e) {
                     System.out.println("An exception has been thrown when attempting to read the response for the publisher get api service : " + e);
+                    pw.println("An exception has been thrown when attempting to read the response for the publisher get api service : " + e);
                     return null;
                 } catch (JSONException e) {
                     e.printStackTrace();
                     return null;
                 }
             } else {
-                System.out.println("Returned Status Code : " + response.getStatusLine().getStatusCode());
+                System.out.println("Get API by ID Returned Status Code : " + response.getStatusLine().getStatusCode());
+                pw.println("Get API by ID Returned Status Code : " + response.getStatusLine().getStatusCode());
                 return null;
             }
 
@@ -347,36 +407,47 @@ public class Application {
         return null;
     }
 
-    private static JSONObject changeEPParameter(String apiId, JSONObject apiDefinition) {
+    private static JSONObject changeEPParameter(String apiId, JSONObject apiDefinition, PrintWriter pw) {
         try {
+            System.out.println("Sandbox and production endpoints are being changed for the API : " + apiId);
+            pw.println("Sandbox and production endpoints are being changed for the API : " + apiId);
+
             String regex = "((http|https):\\/\\/(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\\.)*[a-zA-Z0-9-]+(:[0-9]{1,5})*)";
             JSONObject endpointConfig = (JSONObject) apiDefinition.get("endpointConfig");
-            JSONObject sandboxEP = (JSONObject) endpointConfig.get("sandbox_endpoints");
-            String sandboxUrl = sandboxEP.getString("url");
-            String[] splitSandboxUrl = sandboxUrl.split(regex);
-            if (splitSandboxUrl.length > 0) {
-                sandboxEP.put("url", SANDBOX_ENDPOINT + splitSandboxUrl[1]);
+            if(endpointConfig.get("sandbox_endpoints")!=null){
+                JSONObject sandboxEP = (JSONObject) endpointConfig.get("sandbox_endpoints");
+                String sandboxUrl = sandboxEP.getString("url");
+                String[] splitSandboxUrl = sandboxUrl.split(regex);
+                if (splitSandboxUrl.length > 0) {
+                    sandboxEP.put("url", SANDBOX_ENDPOINT + splitSandboxUrl[1]);
+                } else {
+                    sandboxEP.put("url", SANDBOX_ENDPOINT);
+                }
             } else {
-                sandboxEP.put("url", SANDBOX_ENDPOINT);
+                System.out.println("Sandbox endpoint in null for the API : " + apiId);
+                pw.println("Sandbox endpoint in null for the API : " + apiId);
             }
 
-            JSONObject prodEP = (JSONObject) endpointConfig.get("production_endpoints");
-            String prodUrl = prodEP.getString("url");
-            String[] splitProdUrl = prodUrl.split(regex);
-            if (splitProdUrl.length > 0) {
-                prodEP.put("url", PRODUCTION_ENDPOINT + splitProdUrl[1]);
+            if(endpointConfig.get("production_endpoints") != null){
+                JSONObject prodEP = (JSONObject)endpointConfig.get("production_endpoints") ;
+                String prodUrl = prodEP.getString("url");
+                String[] splitProdUrl = prodUrl.split(regex);
+                if (splitProdUrl.length > 0) {
+                    prodEP.put("url", PRODUCTION_ENDPOINT + splitProdUrl[1]);
+                } else {
+                    prodEP.put("url", PRODUCTION_ENDPOINT);
+                }
             } else {
-                prodEP.put("url", PRODUCTION_ENDPOINT);
+                System.out.println("Production endpoint in null for the API : " + apiId);
+                pw.println("Production endpoint in null for the API : " + apiId);
             }
-
-            System.out.println("Sandbox and production endpoints have been changed for the API : " + apiId);
         } catch (JSONException e) {
             e.printStackTrace();
         }
         return apiDefinition;
     }
 
-    private static boolean updateApi(String accessToken, String apiId, JSONObject apiDefinition) {
+    private static boolean updateApi(String accessToken, String apiId, JSONObject apiDefinition, PrintWriter pw) {
 
 
         HttpPut httpPut = new HttpPut("https://" + HOST + ":" + TRANSPORT_PORT + "/api/am/publisher/v3/apis/" + apiId);
@@ -425,10 +496,12 @@ public class Application {
 
                 } catch (IOException e) {
                     System.out.println("An exception has been thrown when attempting to read the response for the publisher update api service : " + e);
+                    pw.println("An exception has been thrown when attempting to read the response for the publisher update api service : " + e);
                     return false;
                 }
             } else {
-                System.out.println("Returned Status Code : " + response.getStatusLine().getStatusCode());
+                System.out.println("Update API Returned Status Code : " + response.getStatusLine().getStatusCode());
+                pw.println("Update API Returned Status Code : " + response.getStatusLine().getStatusCode());
                 return false;
             }
 
@@ -442,7 +515,7 @@ public class Application {
         return false;
     }
 
-    private static String createRevision(String accessToken, String apiId) {
+    private static String createRevision(String accessToken, String apiId, PrintWriter pw) {
 
         HttpPost httpPost = new HttpPost("https://" + HOST + ":" + TRANSPORT_PORT + "/api/am/publisher/v3/apis/" + apiId + "/revisions");
         final String REQUEST_BODY = "{\n" +
@@ -491,17 +564,20 @@ public class Application {
 //                    System.out.println("Full Create Revision Response : " + sb.toString());
                     JSONObject jsonObject = new JSONObject(sb.toString());
                     System.out.println("Newly created revision Id : " + jsonObject.get("id"));
+                    pw.println("Newly created revision Id : " + jsonObject.get("id"));
                     return (String) jsonObject.get("id");
 
                 } catch (IOException e) {
                     System.out.println("An exception has been thrown when attempting to read the response for the publisher create revision service : " + e);
+                    pw.println("An exception has been thrown when attempting to read the response for the publisher create revision service : " + e);
                     return null;
                 } catch (JSONException e) {
                     e.printStackTrace();
                     return null;
                 }
             } else {
-                System.out.println("Returned Status Code : " + response.getStatusLine().getStatusCode());
+                System.out.println("Create Revision Returned Status Code : " + response.getStatusLine().getStatusCode());
+                pw.println("Create Revision Returned Status Code : " + response.getStatusLine().getStatusCode());
                 return null;
             }
 
@@ -515,7 +591,7 @@ public class Application {
         return null;
     }
 
-    private static boolean deployRevision(String accessToken, String apiId, String revisionId) {
+    private static boolean deployRevision(String accessToken, String apiId, String revisionId, PrintWriter pw) {
         HttpPost httpPost = new HttpPost("https://" + HOST + ":" + TRANSPORT_PORT + "/api/am/publisher/v3/apis/" + apiId + "/deploy-revision?revisionId=" + revisionId);
 
         System.out.println("Gateway Name : " + GATEWAY_NAME);
@@ -574,13 +650,15 @@ public class Application {
                     return true;
                 } catch (IOException e) {
                     System.out.println("An exception has been thrown when attempting to read the response for the authorization service : " + e);
+                    pw.println("An exception has been thrown when attempting to read the response for the authorization service : " + e);
                     return false;
                 } catch (JSONException e) {
                     e.printStackTrace();
                     return false;
                 }
             } else {
-                System.out.println("Returned Status Code : " + response.getStatusLine().getStatusCode());
+                System.out.println("Deploy Revision Returned Status Code : " + response.getStatusLine().getStatusCode());
+                pw.println("Deploy Revision Returned Status Code : " + response.getStatusLine().getStatusCode());
                 return false;
             }
 
@@ -594,7 +672,7 @@ public class Application {
         return false;
     }
 
-    private static String getInactiveRevision(String accessToken, String apiId) {
+    private static String getInactiveRevision(String accessToken, String apiId, PrintWriter pw) {
         HttpGet httpGet = new HttpGet("https://" + HOST + ":" + TRANSPORT_PORT + "/api/am/publisher/v3/apis/" + apiId + "/revisions");
         try {
             httpGet.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken);
@@ -651,6 +729,7 @@ public class Application {
                             }
                         }
                         System.out.println("Revision selected to delete : " + dateRevisionMap.firstEntry().getValue());
+                        pw.println("Revision selected to delete : " + dateRevisionMap.firstEntry().getValue());
                         return dateRevisionMap.firstEntry().getValue();
                     } else {
                         JSONArray jsonArray = (JSONArray) jsonObject.get("list");
@@ -671,6 +750,7 @@ public class Application {
 
                 } catch (IOException e) {
                     System.out.println("An exception has been thrown when attempting to read the response for the publisher get revision service : " + e);
+                    pw.println("An exception has been thrown when attempting to read the response for the publisher get revision service : " + e);
                     return null;
                 } catch (JSONException e) {
                     e.printStackTrace();
@@ -678,6 +758,7 @@ public class Application {
                 }
             } else {
                 System.out.println("Returned Status Code : " + response.getStatusLine().getStatusCode());
+                pw.println("Get Inactive Revision Returned Status Code : " + response.getStatusLine().getStatusCode());
                 return null;
             }
 
@@ -691,7 +772,7 @@ public class Application {
         return null;
     }
 
-    private static boolean deleteRevision(String accessToken, String apiId, String revisionId) {
+    private static boolean deleteRevision(String accessToken, String apiId, String revisionId, PrintWriter pw) {
         HttpDelete httpDelete = new HttpDelete("https://" + HOST + ":" + TRANSPORT_PORT + "/api/am/publisher/v3/apis/" + apiId + "/revisions/" + revisionId);
 
         try {
@@ -734,10 +815,12 @@ public class Application {
 
                 } catch (IOException e) {
                     System.out.println("An exception has been thrown when attempting to read the response for the publisher revision delete service : " + e);
+                    pw.println("An exception has been thrown when attempting to read the response for the publisher revision delete service : " + e);
                     return false;
                 }
             } else {
-                System.out.println("Returned Status Code : " + response.getStatusLine().getStatusCode());
+                System.out.println("Delete Revision Returned Status Code : " + response.getStatusLine().getStatusCode());
+                pw.println("Delete Revision Returned Status Code : " + response.getStatusLine().getStatusCode());
                 return false;
             }
 
