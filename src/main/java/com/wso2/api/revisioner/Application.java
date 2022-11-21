@@ -69,12 +69,11 @@ public class Application {
         System.out.println("SANDBOX_ENDPOINT : " + SANDBOX_ENDPOINT);
         System.out.println("PRODUCTION_ENDPOINT : " + PRODUCTION_ENDPOINT);
 
-        if (HOST != "" && TRANSPORT_PORT != "") {
+        if (!HOST.equals("") && !TRANSPORT_PORT.equals("") && !CLIENT_KEY.equals("") && !CLIENT_SECRET.equals("") && !SANDBOX_ENDPOINT.equals("") && !PRODUCTION_ENDPOINT.equals("")) {
             String accessToken = generateAccessToken();
             System.out.println("*************************************************************");
             if (accessToken != null) {
-                List<String> apiIds = new ArrayList<>();
-                apiIds = retrieveAllAPIIds(accessToken);
+                List<String> apiIds = retrieveAllAPIIds(accessToken);
                 if (apiIds.size() != 0) {
                     System.out.println("*************************************************************");
                     System.out.println("Total Number of APIs to be changed : " + apiIds.size());
@@ -350,11 +349,26 @@ public class Application {
 
     private static JSONObject changeEPParameter(String apiId, JSONObject apiDefinition) {
         try {
+            String regex = "((http|https):\\/\\/(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\\.)*[a-zA-Z0-9-]+(:[0-9]{1,5})*)";
             JSONObject endpointConfig = (JSONObject) apiDefinition.get("endpointConfig");
-            JSONObject sandboxUrl = (JSONObject) endpointConfig.get("sandbox_endpoints");
-            sandboxUrl.put("url", SANDBOX_ENDPOINT);
-            JSONObject prodUrl = (JSONObject) endpointConfig.get("production_endpoints");
-            prodUrl.put("url", PRODUCTION_ENDPOINT);
+            JSONObject sandboxEP = (JSONObject) endpointConfig.get("sandbox_endpoints");
+            String sandboxUrl = sandboxEP.getString("url");
+            String[] splitSandboxUrl = sandboxUrl.split(regex);
+            if (splitSandboxUrl.length > 0) {
+                sandboxEP.put("url", SANDBOX_ENDPOINT + splitSandboxUrl[1]);
+            } else {
+                sandboxEP.put("url", SANDBOX_ENDPOINT);
+            }
+
+            JSONObject prodEP = (JSONObject) endpointConfig.get("production_endpoints");
+            String prodUrl = prodEP.getString("url");
+            String[] splitProdUrl = prodUrl.split(regex);
+            if (splitProdUrl.length > 0) {
+                prodEP.put("url", PRODUCTION_ENDPOINT + splitProdUrl[1]);
+            } else {
+                prodEP.put("url", PRODUCTION_ENDPOINT);
+            }
+
             System.out.println("Sandbox and production endpoints have been changed for the API : " + apiId);
         } catch (JSONException e) {
             e.printStackTrace();
