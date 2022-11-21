@@ -115,9 +115,9 @@ public class Application {
 //
                             apiDefinition = changeEPParameter(apiIds.get(i), apiDefinition, pw);
 
-                            if(apiDefinition == null){
-                                System.out.println("Skipping updating the endpoints of the API : "+apiIds.get(i));
-                                pw.println("Skipping updating the endpoints of the API : "+apiIds.get(i));
+                            if (apiDefinition == null) {
+                                System.out.println("Skipping updating the endpoints of the API : " + apiIds.get(i));
+                                pw.println("Skipping updating the endpoints of the API : " + apiIds.get(i));
                                 System.out.println("*************************************************************");
                                 pw.println("*************************************************************");
                                 continue;
@@ -177,6 +177,9 @@ public class Application {
                 ctx.close();
             } catch (IOException io) {
                 // can't do anything
+                ctx.close();
+            } catch (Exception e) {
+                ctx.close();
             }
         }
     }
@@ -244,7 +247,8 @@ public class Application {
                     pw.println("An exception has been thrown when attempting to read the response for the token service : " + e);
                     return null;
                 } catch (JSONException e) {
-                    e.printStackTrace();
+                    return null;
+                } catch (Exception e) {
                     return null;
                 }
             } else {
@@ -254,13 +258,14 @@ public class Application {
             }
 
         } catch (IOException e) {
-            e.printStackTrace();
+            return null;
         } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
+            return null;
         } catch (KeyManagementException e) {
-            e.printStackTrace();
+            return null;
+        } catch (Exception e) {
+            return null;
         }
-        return null;
     }
 
     private static List<String> retrieveAllAPIIds(String accessToken, PrintWriter pw) {
@@ -313,8 +318,14 @@ public class Application {
                             //Adding each element of JSON array into ArrayList
                             JSONObject tempObj = (JSONObject) jsonArray.get(i);
                             String lifeCycleStatus = tempObj.getString("lifeCycleStatus");
+                            String type = tempObj.getString("type");
                             if (!lifeCycleStatus.equals("DEPRECATED") && !lifeCycleStatus.equals("RETIRED")) {
-                                apiObjArr.add((String) tempObj.get("id"));
+                                if (!type.equals("WS")) {
+                                    apiObjArr.add((String) tempObj.get("id"));
+                                } else {
+                                    System.out.println("WebSocket API is identified : " + tempObj.getString("id") + ". Hence, skipping updating the endpoints of the API");
+                                    pw.println("WebSocket API is identified : " + tempObj.getString("id") + ". Hence, skipping updating the endpoints of the API");
+                                }
                             } else {
                                 System.out.println("Identified the API : " + tempObj.getString("id") + " is " + lifeCycleStatus);
                                 pw.println("Identified the API : " + tempObj.getString("id") + " is " + lifeCycleStatus);
@@ -329,7 +340,8 @@ public class Application {
                     pw.println("An exception has been thrown when attempting to read the response for the publisher get all api service : " + e);
                     return null;
                 } catch (JSONException e) {
-                    e.printStackTrace();
+                    return null;
+                } catch (Exception e) {
                     return null;
                 }
             } else {
@@ -339,13 +351,14 @@ public class Application {
             }
 
         } catch (IOException e) {
-            e.printStackTrace();
+            return null;
         } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
+            return null;
         } catch (KeyManagementException e) {
-            e.printStackTrace();
+            return null;
+        } catch (Exception e) {
+            return null;
         }
-        return null;
     }
 
     private static JSONObject getAPIById(String accessToken, String apiId, PrintWriter pw) {
@@ -396,7 +409,8 @@ public class Application {
                     pw.println("An exception has been thrown when attempting to read the response for the publisher get api service : " + e);
                     return null;
                 } catch (JSONException e) {
-                    e.printStackTrace();
+                    return null;
+                } catch (Exception e) {
                     return null;
                 }
             } else {
@@ -406,13 +420,14 @@ public class Application {
             }
 
         } catch (IOException e) {
-            e.printStackTrace();
+            return null;
         } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
+            return null;
         } catch (KeyManagementException e) {
-            e.printStackTrace();
+            return null;
+        } catch (Exception e) {
+            return null;
         }
-        return null;
     }
 
     private static JSONObject changeEPParameter(String apiId, JSONObject apiDefinition, PrintWriter pw) {
@@ -457,7 +472,9 @@ public class Application {
             }
 
         } catch (JSONException e) {
-            e.printStackTrace();
+            return null;
+        } catch (Exception e) {
+            return null;
         }
         return apiDefinition;
     }
@@ -513,6 +530,8 @@ public class Application {
                     System.out.println("An exception has been thrown when attempting to read the response for the publisher update api service : " + e);
                     pw.println("An exception has been thrown when attempting to read the response for the publisher update api service : " + e);
                     return false;
+                } catch (Exception e) {
+                    return false;
                 }
             } else {
                 System.out.println("Update API Returned Status Code : " + response.getStatusLine().getStatusCode());
@@ -521,13 +540,14 @@ public class Application {
             }
 
         } catch (IOException e) {
-            e.printStackTrace();
+            return false;
         } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
+            return false;
         } catch (KeyManagementException e) {
-            e.printStackTrace();
+            return false;
+        } catch (Exception e) {
+            return false;
         }
-        return false;
     }
 
     private static String createRevision(String accessToken, String apiId, PrintWriter pw) {
@@ -587,7 +607,8 @@ public class Application {
                     pw.println("An exception has been thrown when attempting to read the response for the publisher create revision service : " + e);
                     return null;
                 } catch (JSONException e) {
-                    e.printStackTrace();
+                    return null;
+                } catch (Exception e) {
                     return null;
                 }
             } else {
@@ -597,13 +618,14 @@ public class Application {
             }
 
         } catch (IOException e) {
-            e.printStackTrace();
+            return null;
         } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
+            return null;
         } catch (KeyManagementException e) {
-            e.printStackTrace();
+            return null;
+        } catch (Exception e) {
+            return null;
         }
-        return null;
     }
 
     private static boolean deployRevision(String accessToken, String apiId, String revisionId, PrintWriter pw) {
@@ -668,7 +690,8 @@ public class Application {
                     pw.println("An exception has been thrown when attempting to read the response for the authorization service : " + e);
                     return false;
                 } catch (JSONException e) {
-                    e.printStackTrace();
+                    return false;
+                } catch (Exception e) {
                     return false;
                 }
             } else {
@@ -678,13 +701,14 @@ public class Application {
             }
 
         } catch (IOException e) {
-            e.printStackTrace();
+            return false;
         } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
+            return false;
         } catch (KeyManagementException e) {
-            e.printStackTrace();
+            return false;
+        } catch (Exception e) {
+            return false;
         }
-        return false;
     }
 
     private static String getInactiveRevision(String accessToken, String apiId, PrintWriter pw) {
@@ -768,7 +792,6 @@ public class Application {
                     pw.println("An exception has been thrown when attempting to read the response for the publisher get revision service : " + e);
                     return null;
                 } catch (JSONException e) {
-                    e.printStackTrace();
                     return null;
                 }
             } else {
@@ -778,13 +801,14 @@ public class Application {
             }
 
         } catch (IOException e) {
-            e.printStackTrace();
+            return null;
         } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
+            return null;
         } catch (KeyManagementException e) {
-            e.printStackTrace();
+            return null;
+        } catch (Exception e) {
+            return null;
         }
-        return null;
     }
 
     private static boolean deleteRevision(String accessToken, String apiId, String revisionId, PrintWriter pw) {
@@ -832,6 +856,8 @@ public class Application {
                     System.out.println("An exception has been thrown when attempting to read the response for the publisher revision delete service : " + e);
                     pw.println("An exception has been thrown when attempting to read the response for the publisher revision delete service : " + e);
                     return false;
+                } catch (Exception e) {
+                    return false;
                 }
             } else {
                 System.out.println("Delete Revision Returned Status Code : " + response.getStatusLine().getStatusCode());
@@ -840,13 +866,14 @@ public class Application {
             }
 
         } catch (IOException e) {
-            e.printStackTrace();
+            return false;
         } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
+            return false;
         } catch (KeyManagementException e) {
-            e.printStackTrace();
+            return false;
+        } catch (Exception e) {
+            return false;
         }
-        return false;
     }
 
 }
