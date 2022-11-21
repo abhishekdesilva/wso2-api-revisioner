@@ -71,7 +71,7 @@ public class Application {
         FileWriter fw = null;
         BufferedWriter bw = null;
         PrintWriter pw = null;
-        try{
+        try {
             fw = FileUtils.getNewFileWriter();
             bw = new BufferedWriter(fw);
             pw = new PrintWriter(bw);
@@ -114,6 +114,14 @@ public class Application {
                             JSONObject apiDefinition = getAPIById(accessToken, apiIds.get(i), pw);
 //
                             apiDefinition = changeEPParameter(apiIds.get(i), apiDefinition, pw);
+
+                            if(apiDefinition == null){
+                                System.out.println("Skipping updating the endpoints of the API : "+apiIds.get(i));
+                                pw.println("Skipping updating the endpoints of the API : "+apiIds.get(i));
+                                System.out.println("*************************************************************");
+                                pw.println("*************************************************************");
+                                continue;
+                            }
 //
                             if (updateApi(accessToken, apiIds.get(i), apiDefinition, pw)) {
                                 System.out.println("Update API Operation Status : " + true);
@@ -161,12 +169,12 @@ public class Application {
                 pw.println("Parameters were not loaded correctly. Please check the integration.properties file.");
             }
             pw.flush();
-            ctx.close();
-        }finally {
+        } finally {
             try {
                 pw.close();
                 bw.close();
                 fw.close();
+                ctx.close();
             } catch (IOException io) {
                 // can't do anything
             }
@@ -175,8 +183,8 @@ public class Application {
 
     private static String generateAccessToken(PrintWriter pw) {
         final String REQUEST_BODY = "{\"grant_type\": \"password\",\n" +
-                "\"username\":\""+USERNAME+"\",\n" +
-                "\"password\":\""+PASSWORD+"\",\n" +
+                "\"username\":\"" + USERNAME + "\",\n" +
+                "\"password\":\"" + PASSWORD + "\",\n" +
                 "\"scope\":\"apim:api_view apim:api_create apim:api_manage apim:api_delete apim:api_publish apim:subscription_view apim:subscription_block apim:subscription_manage apim:external_services_discover apim:threat_protection_policy_create apim:threat_protection_policy_manage apim:document_create apim:document_manage apim:mediation_policy_view apim:mediation_policy_create apim:mediation_policy_manage apim:client_certificates_view apim:client_certificates_add apim:client_certificates_update apim:ep_certificates_view apim:ep_certificates_add apim:ep_certificates_update apim:publisher_settings apim:pub_alert_manage apim:shared_scope_manage apim:app_import_export apim:api_import_export apim:api_product_import_export apim:api_generate_key apim:common_operation_policy_view apim:common_operation_policy_manage apim:comment_write apim:comment_view apim:admin\"\n" +
                 "}";
 
@@ -256,7 +264,7 @@ public class Application {
     }
 
     private static List<String> retrieveAllAPIIds(String accessToken, PrintWriter pw) {
-        HttpGet httpGet = new HttpGet("https://" + HOST + ":" + TRANSPORT_PORT + "/api/am/publisher/v3/apis?limit="+API_LIMIT);
+        HttpGet httpGet = new HttpGet("https://" + HOST + ":" + TRANSPORT_PORT + "/api/am/publisher/v3/apis?limit=" + API_LIMIT);
         try {
             httpGet.setHeader("Accept", "application/json");
 
@@ -413,34 +421,41 @@ public class Application {
             pw.println("Sandbox and production endpoints are being changed for the API : " + apiId);
 
             String regex = "((http|https):\\/\\/(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\\.)*[a-zA-Z0-9-]+(:[0-9]{1,5})*)";
-            JSONObject endpointConfig = (JSONObject) apiDefinition.get("endpointConfig");
-            if(endpointConfig.get("sandbox_endpoints")!=null){
-                JSONObject sandboxEP = (JSONObject) endpointConfig.get("sandbox_endpoints");
-                String sandboxUrl = sandboxEP.getString("url");
-                String[] splitSandboxUrl = sandboxUrl.split(regex);
-                if (splitSandboxUrl.length > 0) {
-                    sandboxEP.put("url", SANDBOX_ENDPOINT + splitSandboxUrl[1]);
+            if (!apiDefinition.get("endpointConfig").equals(null)) {
+                JSONObject endpointConfig = (JSONObject) apiDefinition.get("endpointConfig");
+                if (endpointConfig.has("sandbox_endpoints")) {
+                    JSONObject sandboxEP = (JSONObject) endpointConfig.get("sandbox_endpoints");
+                    String sandboxUrl = sandboxEP.getString("url");
+                    String[] splitSandboxUrl = sandboxUrl.split(regex);
+                    if (splitSandboxUrl.length > 0) {
+                        sandboxEP.put("url", SANDBOX_ENDPOINT + splitSandboxUrl[1]);
+                    } else {
+                        sandboxEP.put("url", SANDBOX_ENDPOINT);
+                    }
                 } else {
-                    sandboxEP.put("url", SANDBOX_ENDPOINT);
+                    System.out.println("Sandbox endpoint is null for the API : " + apiId);
+                    pw.println("Sandbox endpoint is null for the API : " + apiId);
+                }
+
+                if (endpointConfig.has("production_endpoints")) {
+                    JSONObject prodEP = (JSONObject) endpointConfig.get("production_endpoints");
+                    String prodUrl = prodEP.getString("url");
+                    String[] splitProdUrl = prodUrl.split(regex);
+                    if (splitProdUrl.length > 0) {
+                        prodEP.put("url", PRODUCTION_ENDPOINT + splitProdUrl[1]);
+                    } else {
+                        prodEP.put("url", PRODUCTION_ENDPOINT);
+                    }
+                } else {
+                    System.out.println("Production endpoint is null for the API : " + apiId);
+                    pw.println("Production endpoint is null for the API : " + apiId);
                 }
             } else {
-                System.out.println("Sandbox endpoint in null for the API : " + apiId);
-                pw.println("Sandbox endpoint in null for the API : " + apiId);
+                System.out.println("Both Production and Sandbox endpoints are null for the API : " + apiId);
+                pw.println("Both Production and Sandbox endpoints are null for the API : " + apiId);
+                return null;
             }
 
-            if(endpointConfig.get("production_endpoints") != null){
-                JSONObject prodEP = (JSONObject)endpointConfig.get("production_endpoints") ;
-                String prodUrl = prodEP.getString("url");
-                String[] splitProdUrl = prodUrl.split(regex);
-                if (splitProdUrl.length > 0) {
-                    prodEP.put("url", PRODUCTION_ENDPOINT + splitProdUrl[1]);
-                } else {
-                    prodEP.put("url", PRODUCTION_ENDPOINT);
-                }
-            } else {
-                System.out.println("Production endpoint in null for the API : " + apiId);
-                pw.println("Production endpoint in null for the API : " + apiId);
-            }
         } catch (JSONException e) {
             e.printStackTrace();
         }
