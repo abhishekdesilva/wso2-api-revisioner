@@ -12,7 +12,7 @@
 > - HOST --> API Manager hostname
 > - TRANSPORT_PORT --> API Manager port
 > - CLIENT_KEY --> Client Key of an application capable of generating password grant type access token
-> - CLIENT_SECRET -->  Client Secrete of an application capable of generating password grant type access token
+> - CLIENT_SECRET -->  Client Secret of an application capable of generating password grant type access token
 > - SANDBOX_ENDPOINT --> The sandbox endpoint that needs to be changed
 > - PRODUCTION_ENDPOINT --> The production endpoint that needs to be changed
 > - USERNAME --> Admin username
