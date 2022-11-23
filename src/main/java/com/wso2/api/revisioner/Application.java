@@ -35,6 +35,8 @@ public class Application {
     private static String CLIENT_SECRET = "";
     private static String SANDBOX_ENDPOINT = "";
     private static String PRODUCTION_ENDPOINT = "";
+    private static String SANDBOX_WS_ENDPOINT = "";
+    private static String PRODUCTION_WS_ENDPOINT = "";
     private static String USERNAME = "";
     private static String PASSWORD = "";
     private static String API_LIMIT = "";
@@ -45,6 +47,8 @@ public class Application {
     private static String APPLICATION_CLIENT_SECRET = "application.client.secret";
     private static String APPLICATION_SANDBOX_ENDPOINT = "application.sandbox.endpoint";
     private static String APPLICATION_PRODUCTION_ENDPOINT = "application.production.endpoint";
+    private static String APPLICATION_SANDBOX_WS_ENDPOINT = "application.sandbox.ws.endpoint";
+    private static String APPLICATION_PRODUCTION_WS_ENDPOINT = "application.production.ws.endpoint";
     private static String APPLICATION_USERNAME = "application.username";
     private static String APPLICATION_PASSWORD = "application.password";
     private static String APPLICATION_API_LIMIT = "application.api.limit";
@@ -61,6 +65,8 @@ public class Application {
         CLIENT_SECRET = properties.getProperty(APPLICATION_CLIENT_SECRET, "");
         SANDBOX_ENDPOINT = properties.getProperty(APPLICATION_SANDBOX_ENDPOINT, "");
         PRODUCTION_ENDPOINT = properties.getProperty(APPLICATION_PRODUCTION_ENDPOINT, "");
+        SANDBOX_WS_ENDPOINT = properties.getProperty(APPLICATION_SANDBOX_WS_ENDPOINT, "");
+        PRODUCTION_WS_ENDPOINT = properties.getProperty(APPLICATION_PRODUCTION_WS_ENDPOINT, "");
         USERNAME = properties.getProperty(APPLICATION_USERNAME, "");
         PASSWORD = properties.getProperty(APPLICATION_PASSWORD, "");
         API_LIMIT = properties.getProperty(APPLICATION_API_LIMIT, "");
@@ -111,7 +117,7 @@ public class Application {
                         System.out.println("*************************************************************");
                         pw.println("*************************************************************");
                         for (int i = 0; i < apiIds.size(); i++) {
-                            System.out.println("Working on API Number : " + (i+1));
+                            System.out.println("Working on API Number : " + (i + 1));
                             pw.println("Working on API Number : " + i);
                             JSONObject apiDefinition = getAPIById(accessToken, apiIds.get(i), pw);
 //
@@ -322,12 +328,7 @@ public class Application {
                             String lifeCycleStatus = tempObj.getString("lifeCycleStatus");
                             String type = tempObj.getString("type");
                             if (!lifeCycleStatus.equals("DEPRECATED") && !lifeCycleStatus.equals("RETIRED")) {
-                                if (!type.equals("WS")) {
-                                    apiObjArr.add((String) tempObj.get("id"));
-                                } else {
-                                    System.out.println("WebSocket API is identified : " + tempObj.getString("id") + ". Hence, skipping updating the endpoints of the API");
-                                    pw.println("WebSocket API is identified : " + tempObj.getString("id") + ". Hence, skipping updating the endpoints of the API");
-                                }
+                                apiObjArr.add((String) tempObj.get("id"));
                             } else {
                                 System.out.println("Identified the API : " + tempObj.getString("id") + " is " + lifeCycleStatus);
                                 pw.println("Identified the API : " + tempObj.getString("id") + " is " + lifeCycleStatus);
@@ -437,17 +438,35 @@ public class Application {
             System.out.println("Sandbox and production endpoints are being changed for the API : " + apiId);
             pw.println("Sandbox and production endpoints are being changed for the API : " + apiId);
 
-            String regex = "((http|https):\\/\\/(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\\.)*[a-zA-Z0-9-]+(:[0-9]{1,5})*)";
+            String regexRest = "((http|https):\\/\\/(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\\.)*[a-zA-Z0-9-]+(:[0-9]{1,5})*)";
+            String regexWS = "((ws|wss):\\/\\/(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\\.)*[a-zA-Z0-9-]+(:[0-9]{1,5})*)";
             if (!apiDefinition.get("endpointConfig").equals(null)) {
                 JSONObject endpointConfig = (JSONObject) apiDefinition.get("endpointConfig");
                 if (endpointConfig.has("sandbox_endpoints")) {
                     JSONObject sandboxEP = (JSONObject) endpointConfig.get("sandbox_endpoints");
                     String sandboxUrl = sandboxEP.getString("url");
-                    String[] splitSandboxUrl = sandboxUrl.split(regex);
-                    if (splitSandboxUrl.length > 0) {
+                    String[] splitSandboxUrl = sandboxUrl.split(regexRest);
+                    if (splitSandboxUrl.length > 1) {
                         sandboxEP.put("url", SANDBOX_ENDPOINT + splitSandboxUrl[1]);
                     } else {
-                        sandboxEP.put("url", SANDBOX_ENDPOINT);
+                        String[] splitSandboxUrl1 = sandboxUrl.split("(ws|wss):\\/\\/");
+                        if (splitSandboxUrl1.length > 1) {
+                            //this is a WS API
+                            if (SANDBOX_WS_ENDPOINT.equals("")) {
+                                System.out.println("Sandbox WS endpoint is null for the API : " + apiId);
+                                pw.println("Sandbox WS endpoint is null for the API : " + apiId);
+                                return null;
+                            }
+                            String[] splitSandboxUrl2 = sandboxUrl.split(regexWS);
+                            if (splitSandboxUrl2.length > 1) {
+                                sandboxEP.put("url", SANDBOX_WS_ENDPOINT + splitSandboxUrl2[1]);
+                            } else {
+                                sandboxEP.put("url", SANDBOX_WS_ENDPOINT);
+                            }
+                        } else {
+                            sandboxEP.put("url", SANDBOX_ENDPOINT);
+                        }
+
                     }
                 } else {
                     System.out.println("Sandbox endpoint is null for the API : " + apiId);
@@ -457,11 +476,27 @@ public class Application {
                 if (endpointConfig.has("production_endpoints")) {
                     JSONObject prodEP = (JSONObject) endpointConfig.get("production_endpoints");
                     String prodUrl = prodEP.getString("url");
-                    String[] splitProdUrl = prodUrl.split(regex);
-                    if (splitProdUrl.length > 0) {
+                    String[] splitProdUrl = prodUrl.split(regexRest);
+                    if (splitProdUrl.length > 1) {
                         prodEP.put("url", PRODUCTION_ENDPOINT + splitProdUrl[1]);
                     } else {
-                        prodEP.put("url", PRODUCTION_ENDPOINT);
+                        String[] splitProdUrl1 = prodUrl.split("(ws|wss):\\/\\/");
+                        if (splitProdUrl1.length > 1) {
+                            //this is a WS API
+                            if (PRODUCTION_WS_ENDPOINT.equals("")) {
+                                System.out.println("Production WS endpoint is null for the API : " + apiId);
+                                pw.println("Production WS endpoint is null for the API : " + apiId);
+                                return null;
+                            }
+                            String[] splitProdUrl2 = prodUrl.split(regexWS);
+                            if (splitProdUrl2.length > 1) {
+                                prodEP.put("url", PRODUCTION_WS_ENDPOINT + splitProdUrl2[1]);
+                            } else {
+                                prodEP.put("url", PRODUCTION_WS_ENDPOINT);
+                            }
+                        } else {
+                            prodEP.put("url", PRODUCTION_ENDPOINT);
+                        }
                     }
                 } else {
                     System.out.println("Production endpoint is null for the API : " + apiId);
