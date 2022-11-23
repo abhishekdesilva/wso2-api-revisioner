@@ -22,7 +22,7 @@
 > <TOOL_HOME>/resources/integration.properties
 - A log file named "revisioner.log" will be generated in the "resources" directory once the tool is executed and completed its task.
 - When retrieving all APIs, the DEPRECATED and RETIRED APIs will be skipped as they cannot be published again.
-- When retrieving all APIs, the WebSocket APIs will be skipped as it is not been implemented yet.
+- The WebSocket APIs are now supported.
 - When changing an endpoint (sandbox/production), the tool will only change the <http|https>://\<HOST\>:\<PORT\> part. The API's context path will remain the same.
 - The tool will validate whether the sandbox or production endpoint exists or not. There could be APIs with either sandbox or production endpoint only. This will take care of those APIs.
 - Before creating a revision, the tool will check if the maximum revision limit is reached for a given API. If yes, it will delete the oldest inactive revision.
