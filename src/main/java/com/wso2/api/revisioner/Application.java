@@ -111,6 +111,8 @@ public class Application {
                         System.out.println("*************************************************************");
                         pw.println("*************************************************************");
                         for (int i = 0; i < apiIds.size(); i++) {
+                            System.out.println("Working on API Number : " + (i+1));
+                            pw.println("Working on API Number : " + i);
                             JSONObject apiDefinition = getAPIById(accessToken, apiIds.get(i), pw);
 //
                             apiDefinition = changeEPParameter(apiIds.get(i), apiDefinition, pw);
